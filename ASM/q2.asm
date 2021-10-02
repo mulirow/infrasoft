@@ -10,6 +10,19 @@ _getchar:
     call _getchar
 %endmacro
 
+_putchar_nostack:
+    mov si, sp
+    mov al, [si+2]
+    mov ah, 0eh
+    int 10h
+    ret
+
+%macro putchar_nostack 1
+    push %1
+    call _putchar_nostack
+    add sp, 2
+%endmacro
+
 _putchar:
     mov si, sp
     mov al, [si+2]
@@ -20,20 +33,6 @@ _putchar:
 %macro putchar 1
     push %1
     call _putchar
-    add sp, 2
-%endmacro
-
-_putchar2:
-    mov si, sp
-    mov al, [si+2]
-    mov ah, 0eh
-    int 10h
-    ret
-
-%macro putchar2 1
-    push %1
-    call _putchar2
-    ;add sp, 2
 %endmacro
 
 start:
@@ -42,7 +41,7 @@ start:
 
 loop:
     getchar
-    putchar2 ax
+    putchar ax
     cmp al, 13
     je endl
     inc cx
@@ -50,9 +49,9 @@ loop:
 
 endl:
     mov al, 10
-    putchar ax
+    putchar_nostack ax
     mov al, 13
-    putchar ax
+    putchar_nostack ax
     jmp invertLoop
 
 invertPrint:
