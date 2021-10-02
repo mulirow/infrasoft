@@ -2,7 +2,7 @@ org 0x7c00
 jmp 0x0000: start
 
 _getchar:
-    mov ah,00h
+    mov ah, 00h
     int 16h
     ret
 
@@ -10,8 +10,21 @@ _getchar:
     call _getchar
 %endmacro
 
+_putchar_nostack:
+    mov si, sp
+    mov al, [si+2]
+    mov ah, 0eh
+    int 10h
+    ret
+
+%macro putchar_nostack 1
+    push %1
+    call _putchar_nostack
+    add sp, 2
+%endmacro
+
 _putchar:
-    mov si,sp
+    mov si, sp
     mov al, [si+2]
     mov ah, 0eh
     int 10h
@@ -20,41 +33,47 @@ _putchar:
 %macro putchar 1
     push %1
     call _putchar
-    add sp,2
-    ret
-%endmacro 
+%endmacro
 
 start:
-    xor ax,ax
-    xor cx,cx
+    xor ax, ax
+    xor cx, cx
 
-loop:
+nameLoop:
     getchar
     putchar ax
     cmp al, 13
     je endl
     inc cx
-    jmp loop
+    jmp nameLoop
 
 endl:
-    mov al 10
-    putchar ax
+    mov al, 10
+    putchar_nostack ax
     mov al, 13
-    putchar al
+    putchar_nostack ax
     
-    jmp Search
+    jmp getNum
 
-Search:
+printLetter:
+    mov si, sp
+    mov cl, al
+    add si, cx
+    mov al, [si+2]
+    mov ah, 0eh
+    int 10h
+    ret
+
+getNum:
     getchar
-    sub cx,al
-
-    mov si,sp
-    mov al,[si+cx]
-
-
-
-
-
+    sub al, 48
+    sub cl, al
+    inc cl
+    mov al, cl
+    mov dl, 2
+    mul dl
+    
+    call printLetter
 
 times 510 - ($ - $$) db 0
 dw 0xaa55
