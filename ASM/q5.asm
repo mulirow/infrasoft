@@ -2,7 +2,7 @@ org 0x7c00
 jmp 0x0000: start
 
 data:
-    str1 db 'Malu eh uma otima monitora', 13, 10, 0
+    str1 db 'Malu eh uma otima monitora', 0
 
 _putchar_nostack:
     mov si, sp
@@ -22,8 +22,20 @@ prints:
         lodsb           
         cmp al, 0
         je .endloop
-        mov ah, 0x0e
+        mov ah, 09h             
+        mov bh, 0x00
+        mov cx, 01h
+        mov ah, 09h
         int 10h
+        ;Move o Cursor
+        mov bh, 00h
+        mov ah, 03h
+        int 10h
+        mov ah, 02h
+        mov bh, 00h
+        inc dl
+        int 10h
+        ;termina de mover
         jmp .loop
     .endloop:
     ret
@@ -33,6 +45,7 @@ start:
     xor bx,bx
     xor cx,cx
     xor dx,dx
+    xor dl,dl
 
 inputLoop:
     mov ah, 00h
