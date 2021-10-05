@@ -1,6 +1,9 @@
 org 0x7c00
 jmp 0x0000: start
 
+data:
+    str1 db 'Malu eh uma otima monitora', 13, 10, 0
+
 _putchar_nostack:
     mov si, sp
     mov al, [si+2]
@@ -14,6 +17,17 @@ _putchar_nostack:
     add sp, 2
 %endmacro
 
+prints:
+    .loop:
+        lodsb           
+        cmp al, 0
+        je .endloop
+        mov ah, 0x0e
+        int 10h
+        jmp .loop
+    .endloop:
+    ret
+
 start:
     xor ax,ax
     xor bx,bx
@@ -26,6 +40,7 @@ inputLoop:
     putchar_nostack ax
     cmp al, 13
     jne stringToint
+    jmp printString
 
 stringToint:
     sub al, 48
@@ -37,6 +52,25 @@ stringToint:
     mov bx, ax
     jmp inputLoop
 
+printString:
+    call endl
+
+    pusha
+    mov si, str1
+    call prints
+    popa
+
+    jmp end
+
+endl:
+    mov al, 10
+    putchar_nostack ax
+    mov al, 13
+    putchar_nostack ax                                                                                  
+    ret
+
+end:
+    jmp $
 
 times 510 - ($ - $$) db 0
 dw 0xaa55
