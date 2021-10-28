@@ -287,8 +287,69 @@ print_game:
     mov si, pontuacao
     call prints
 
-    jmp print_game
+    jmp input_game
 
+input_game:
+    mov ah, 0
+    int 16h
+
+    cmp ah, 10h
+    je pressQ
+
+    cmp ah, 11h
+    je pressW
+
+    cmp ah, 12h
+    je pressE
+
+    cmp ah, 1Eh
+    je pressA
+
+    cmp ah, 1Fh
+    je pressS
+
+    cmp ah, 20h
+    je pressD
+
+    cmp ah, 2Ch
+    je pressZ
+
+    cmp ah, 2Dh
+    je pressX
+
+    cmp ah, 2Eh
+    je pressC
+
+    jmp input_game
+
+pressQ:
+    ; fazer as checagens de hitbox
+    jmp print_menu
+
+pressW:
+    jmp print_menu
+
+pressE:
+    jmp print_menu
+
+pressA:
+    jmp print_menu
+    
+pressS:
+    jmp print_menu
+    
+pressD:
+    jmp print_menu
+    
+pressZ:
+    jmp print_menu
+    
+pressX:
+    jmp print_menu
+    
+pressC:
+    jmp print_menu
+    
 print_tutorial:
 
     mov dx, 0000h
@@ -326,3 +387,60 @@ end:
     call prints
 
 jmp $
+
+; whack-a-mongus
+    ; Menu
+        ; Jogar
+            ; *Menu de dificuldade
+                ; Dificuldade:
+                    ; Python
+                        ; Toupeiras nunca descem
+                    ; C/C++
+                        ; Coisa de gente
+                    ; Assembly
+                        ; Ultra instinct
+
+            ; *Menu de modos
+                ; sem timer
+                    ; infinito
+                    ; contador de pontuação
+                        ; 1 ponto por toupeira
+                    ; morte quando erra 1 toupeira ou ela desce sem ser marretada
+                ; *com timer
+                    ; timer
+                        ; 1:30?
+                    ; contador de pontuação
+                        ; 1 ponto por toupeira
+                        ; -1 ponto ao errar uma toupeira ou ela descer sem ser marretada
+                    ; morte quando o tempo acaba
+            ; * Quantidade de jogadores: 1-2
+
+        ; Tutorial/comandos
+            ; Setas para se mover
+            ; Espaço para marretar
+        ; Sair
+            ; O que será que acontece?
+
+    ; PRINCIPAL/MECÂNICAS
+        ; buracos
+            ; só desenhar na tela
+        ; topeiras
+            ; aparecem pseudo-aleatoriamente
+            ; ficam por x segundos
+                ; talvez aparecem por menos tempo quanto maior a pontuação
+        ; marreta
+            ; se move com as setas
+            ; espaço faz ela marretar o buraco
+                ; possivelmente 
+
+; TO-DO
+    ; Botões funcionais para o menu
+        ; Atualizar botões (estão nas setas atualmente)
+    ; Adicionada dos sprites
+    ; Funcionalidades das opções do menu
+
+;https://cdn.discordapp.com/attachments/522825389903708182/897935007023255562/244546739_1875494342638117_1862301952882816116_n.mp4
+
+    ;Co-authored-by: Kammerer; <victorKammerer@users.noreply.github.com>
+    ;Co-authored-by: RenatoNogFer <RenatoNogFer@users.noreply.github.com>
+    ;Co-authored-by: Matheus J. Boncsidai <Mathbonc@users.noreply.github.com>
