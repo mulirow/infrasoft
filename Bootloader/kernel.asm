@@ -228,6 +228,17 @@ select_1_menu:
     xor ax, ax
     mov [si], ax
 
+    ; Resetar estado dos inimigos quando o jogo inicia
+    mov [si+2], ax
+    mov [si+4], ax
+    mov [si+6], ax
+    mov [si+8], ax
+    mov [si+10], ax
+    mov [si+12], ax
+    mov [si+14], ax
+    mov [si+16], ax
+    mov [si+18], ax
+
     call print_base
     jmp print_game
 
@@ -878,11 +889,6 @@ end:
     add sp, 26 ; Desalocar os valores iniciais
 
 jmp $
-
-; TO-DO
-    ; Upgrade pseudo-random generator
-    ; Do the tutorial screen
-    ; Checagem de derrota caso todos eles fiquem para cima
 
     ;Co-authored-by: Kammerer; <victorKammerer@users.noreply.github.com>
     ;Co-authored-by: RenatoNogFer <RenatoNogFer@users.noreply.github.com>
