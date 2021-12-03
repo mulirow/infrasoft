@@ -74,6 +74,9 @@ int main(){
         exit(1);
     }
 
+    int limit;
+    fscanf(input, "%d", &limit);
+
     //Alocar matriz
     fscanf(input, "%d %d", &x, &y);
     bitmap = allocMatrix(x, y);
@@ -82,6 +85,18 @@ int main(){
     for(int i = 0; i < x; i++){
         for(int j = 0; j < y; j++){
             fscanf(input, "%d %d %d", &bitmap[i][j].r, &bitmap[i][j].g, &bitmap[i][j].b);
+            if(bitmap[i][j].r > limit){
+                printf("Valor R do pixel [%d][%d] passou do valor limite. Ele sera auto-definido para o limite.\n", i, j);
+                bitmap[i][j].r = limit;
+            }
+            if(bitmap[i][j].g > limit){
+                printf("Valor G do pixel [%d][%d] passou do valor limite. Ele sera auto-definido para o limite.\n", i, j);
+                bitmap[i][j].g = limit;
+            }
+            if(bitmap[i][j].b > limit){
+                printf("Valor B do pixel [%d][%d] passou do valor limite. Ele sera auto-definido para o limite.\n", i, j);
+                bitmap[i][j].b = limit;
+            }
         }
     }
 
