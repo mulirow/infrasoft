@@ -74,14 +74,13 @@ int main(){
         exit(1);
     }
 
-    int limit;
-    fscanf(input, "%d", &limit);
-
     //Alocar matriz
     fscanf(input, "%d %d", &x, &y);
     bitmap = allocMatrix(x, y);
 
     //Receber dados do arquivo
+    int limit;
+    fscanf(input, "%d", &limit);
     for(int i = 0; i < x; i++){
         for(int j = 0; j < y; j++){
             fscanf(input, "%d %d %d", &bitmap[i][j].r, &bitmap[i][j].g, &bitmap[i][j].b);
