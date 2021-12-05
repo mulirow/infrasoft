@@ -38,7 +38,7 @@ int main (){
         rc = pthread_create(&Thread[i], NULL, inc, &ThreadID[i]);
         if(rc){
             printf("Fomos de Base na %d Thread\n", i);
-            exit(-1);
+            exit(1);
         }
         //pthread_join(Thread[i], NULL);
     }

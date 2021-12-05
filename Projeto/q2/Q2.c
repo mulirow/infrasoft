@@ -60,7 +60,7 @@ int main(){
         printf("Criando Thread: %d\n", i);
         if(rc){ 
             printf("Fomos de Base na %d Thread\n", i);
-            exit(-1);
+            exit(1);
         }   
     }
     
