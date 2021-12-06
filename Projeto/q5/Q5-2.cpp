@@ -191,6 +191,20 @@ int main(){
         std::cout << "\n";
     }
 
+    int numIslands = 0;
+
+    for(i = 0; i < x; i++){
+        for(j = 0; j < y; j++){
+            if(map[i][j] == 1){
+                if(root[i][j] == std::make_pair(i, j)){
+                    numIslands++;
+                }
+            }
+        }
+    }
+
+    printf("Number of islands nessa porra: %d\n", numIslands);
+
     freeMatrix<ii>(root, x);
     freeMatrix<int>(sz, x);
     freeMatrix<int>(map, x);

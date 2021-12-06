@@ -14,20 +14,16 @@ int **map;
 int x, y, T;
 
 template <typename T>
-T **allocMatrix(int height, int width)
-{
+T **allocMatrix(int height, int width){
     int i, j;
     T **matrix = (T **)malloc(height * sizeof(T *));
-    if (matrix == NULL)
-    {
+    if (matrix == NULL){
         printf("Failed to allocate memory.\n");
         exit(1);
     }
-    for (i = 0; i < height; i++)
-    {
+    for (i = 0; i < height; i++){
         matrix[i] = (T *)malloc(width * sizeof(T));
-        if (matrix[i] == NULL)
-        {
+        if (matrix[i] == NULL){
             printf("Failed to allocate memory.\n");
             exit(1);
         }
@@ -37,162 +33,132 @@ T **allocMatrix(int height, int width)
 }
 
 template <typename T>
-void freeMatrix(T **matrix, int height)
-{
+void freeMatrix(T **matrix, int height){
     int i;
-    for (i = 0; i < height; i++)
-    {
+    for (i = 0; i < height; i++){
         free(matrix[i]);
     }
     free(matrix);
 }
 
-ii find(ii a)
-{
-    if (root[a.first][a.second] == a)
-    {
+ii find(ii a){
+    if (root[a.first][a.second] == a){
         return a;
     }
     return find(root[a.first][a.second]);
 }
 
-void join(ii a, ii b)
-{
+void join(ii a, ii b){
+	// printf("Checando (%d, %d) e (%d, %d): ", a.first, a.second, b.first, b.second);
     a = find(a);
     b = find(b);
 
-    if (a != b)
-    {
-        if ((a.first > b.first) && (a.second > b.second))
-        {
-            root[a.first][a.second] = b;
+    if (a != b){
+        if (sz[a.first][a.second] < sz[b.first][b.second]){
+			root[a.first][a.second] = b;
+			// printf("(%d, %d) agora tem root em (%d, %d)", a.first, a.second, b.first, b.second);
         }
-        else
-        {
+        else{
             root[b.first][b.second] = a;
+			// printf("(%d, %d) agora tem root em (%d, %d)", b.first, b.second, a.first, a.second);
         }
+
+		sz[a.first][a.second] += sz[b.first][b.second];
+		sz[b.first][b.second] += sz[a.first][a.second];
     }
+	else{
+		// printf("Nada mudou nessa porra.");
+	}
+	// printf("\n");
 }
 
-void *findIslands(void *threadid)
-{
+void *findIslands(void *threadid){
     int ID = (*(int *)threadid);
-
-    for (int i = 2 * ID; i < x; i += 2 * T)
-    {
-        for (int j = 0; j < y; j++)
-        {
-            if (map[i][j] == 0)
-            {
+    for (int i = 2 * ID; i < x; i += 2 * T){
+        for (int j = 0; j < y; j++){
+            if (map[i][j] == 0){
                 continue;
             }
-            // //N
-            // if((i - 1 >= 0) && (map[i-1][j] == 1)){
-            //     join({i, j}, {i-1, j});
-            // }
-            // //NE
-            // if((i - 1 >= 0) && (j + 1 < y) && (map[i-1][j+1] == 1)){
-            //     join({i, j}, {i-1, j+1});
-            // }
             // E
-            if ((j + 1 < y) && (map[i][j + 1] == 1))
-            {
+            if ((j + 1 < y) && (map[i][j + 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i, j + 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // SE
-            if ((i + 1 < x) && (j + 1 < y) && (map[i + 1][j + 1] == 1))
-            {
+            if ((i + 1 < x) && (j + 1 < y) && (map[i + 1][j + 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j + 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // S
-            if ((i + 1 < x) && (map[i + 1][j] == 1))
-            {
+            if ((i + 1 < x) && (map[i + 1][j] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j});
                 pthread_mutex_unlock(&mymutex);
             }
             // SO
-            if ((i + 1 < x) && (j - 1 >= 0) && (map[i + 1][j - 1] == 1))
-            {
+            if ((i + 1 < x) && (j - 1 >= 0) && (map[i + 1][j - 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j - 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // O
-            if ((j - 1 >= 0) && (map[i][j - 1] == 1))
-            {
+            if ((j - 1 >= 0) && (map[i][j - 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i, j - 1});
                 pthread_mutex_unlock(&mymutex);
             }
-            // //NO
-            // if((i - 1 >= 0) && (j - 1 >= 0) && (map[i-1][j-1] == 1)){
-            //     join({i, j}, {i-1, j-1});
-            // }
         }
     }
 
     pthread_barrier_wait(&barrier);
 
-    for (int i = 2 * ID + 1; i < x; i += 2 * T)
-    {
-        for (int j = 0; j < y; j++)
-        {
-            if (map[i][j] == 0)
-            {
+    for (int i = 2 * ID + 1; i < x; i += 2 * T){
+        for (int j = 0; j < y; j++){
+            if (map[i][j] == 0){
                 continue;
             }
-            // //N
-            // if((i - 1 >= 0) && (map[i-1][j] == 1)){
-            //     join({i, j}, {i-1, j});
-            // }
-            // //NE
-            // if((i - 1 >= 0) && (j + 1 < y) && (map[i-1][j+1] == 1)){
-            //     join({i, j}, {i-1, j+1});
-            // }
             // E
-            if ((j + 1 < y) && (map[i][j + 1] == 1))
-            {
+            if ((j + 1 < y) && (map[i][j + 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i, j + 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // SE
-            if ((i + 1 < x) && (j + 1 < y) && (map[i + 1][j + 1] == 1))
-            {
+            if ((i + 1 < x) && (j + 1 < y) && (map[i + 1][j + 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j + 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // S
-            if ((i + 1 < x) && (map[i + 1][j] == 1))
-            {
+            if ((i + 1 < x) && (map[i + 1][j] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j});
                 pthread_mutex_unlock(&mymutex);
             }
             // SO
-            if ((i + 1 < x) && (j - 1 >= 0) && (map[i + 1][j - 1] == 1))
-            {
+            if ((i + 1 < x) && (j - 1 >= 0) && (map[i + 1][j - 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i + 1, j - 1});
                 pthread_mutex_unlock(&mymutex);
             }
             // O
-            if ((j - 1 >= 0) && (map[i][j - 1] == 1))
-            {
+            if ((j - 1 >= 0) && (map[i][j - 1] == 1)){
                 pthread_mutex_lock(&mymutex);
+                // printf("Thread %d: ", ID);
                 join({i, j}, {i, j - 1});
                 pthread_mutex_unlock(&mymutex);
             }
-            // //NO
-            // if((i - 1 >= 0) && (j - 1 >= 0) && (map[i-1][j-1] == 1)){
-            //     join({i, j}, {i-1, j-1});
-            // }
         }
     }
 
@@ -213,41 +179,48 @@ int main()
     sz = allocMatrix<int>(x, y);
     map = allocMatrix<int>(x, y);
 
-    for (i = 0; i < x; i++)
-    {
-        for (j = 0; j < y; j++)
-        {
+    for (i = 0; i < x; i++){
+        for (j = 0; j < y; j++){
             root[i][j] = {i, j};
             sz[i][j] = 0;
             std::cin >> map[i][j];
         }
     }
 
-    for (i = 0; i < T; i++)
-    {
+    for (i = 0; i < T; i++){
         ThreadsID[i] = i;
         rc = pthread_create(&Threads[i], NULL, findIslands, &ThreadsID[i]);
         printf("Criando Thread: %d\n", i);
-        if (rc)
-        {
+        if (rc){
             printf("Falhou na criação da Thread %d\n", i);
             exit(1);
         }
     }
 
-    for (i = 0; i < T; i++)
-    {
+    for (i = 0; i < T; i++){
         pthread_join(Threads[i], NULL);
     }
 
-    for (i = 0; i < x; i++)
-    {
-        for (j = 0; j < y; j++)
-        {
-            std::cout << "(" << root[i][j].first << ", " << root[i][j].second << ") ";
+    for (i = 0; i < x; i++){
+        for (j = 0; j < y; j++){
+            // std::cout << "(" << root[i][j].first << ", " << root[i][j].second << ") ";
         }
-        std::cout << "\n";
+        // std::cout << "\n";
     }
+
+    int numIslands = 0;
+
+    for(i = 0; i < x; i++){
+        for(j = 0; j < y; j++){
+            if(map[i][j] == 1){
+                if(root[i][j] == std::make_pair(i, j)){
+                    numIslands++;
+                }
+            }
+        }
+    }
+
+    printf("Number of islands: %d\n", numIslands);
 
     freeMatrix<ii>(root, x);
     freeMatrix<int>(sz, x);
