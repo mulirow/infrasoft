@@ -29,7 +29,7 @@ void *inc (void *threadid){
 int main (){
     pthread_t Thread[NUM_THREADS];
     int ThreadID[NUM_THREADS];
-    int i, contador,rc;
+    int i, rc;
 
     //Inicializando os ID's
     for(i=0; i<NUM_THREADS; i++){
@@ -42,6 +42,10 @@ int main (){
         }
         //pthread_join(Thread[i], NULL);
     }
-    
+
+    for(i = 0; i < NUM_THREADS; i++){
+        pthread_join(Thread[i], NULL);
+    }
+    printf("Valor final: %d\n", contador);
     pthread_exit(NULL);
 }
