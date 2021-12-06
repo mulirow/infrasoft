@@ -22,7 +22,7 @@ void *Eratosthenes(void *threadid){
         guardadordeprimos[ID]=prime;
         pthread_mutex_unlock(&mymutex);
 
-        printf("%d encontrado pela thread %d\n", prime, ID);
+        printf("%d encontrado pela thread %d\n", guardadordeprimos[ID], ID);
 
         //Eliminação de não-primos
         for(kc[ID] = guardadordeprimos[ID] + guardadordeprimos[ID]; kc[ID] < N; kc[ID] += guardadordeprimos[ID]){
