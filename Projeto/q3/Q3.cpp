@@ -3,58 +3,57 @@
 #include <pthread.h>
 typedef std::pair<int, int> ii;
 
-// Tamanho do labirinto e n de threads
-#define M 4
+#define M 7
 #define N 4
-#define NUM_THREADS 4
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t matrix_mutex[M][N];
 
 // Pilha de globais no canto do quarto
 std::queue<ii> q;
+ii parent[M][N];
 int matrix[M][N];
 bool visit[M][N];
 int distX[4] = {-1, 0, 1, 0};
 int distY[4] = {0, 1, 0, -1};
-int endX, endY;
 int *x = NULL, *y = NULL;
 ii* temp = NULL;
+int threadCount = 1;
 
-void* isTherePath(void* threadid){ // BFS
-    int ID = (*(int *)threadid);
-    for(int i = 0; i < 4; i++){
-        //to-do: x e y como array de tamanho NUM_THREAD
-        x[ID] = temp[i].first + distX[i];
-        y[ID] = temp[i].second + distY[i];
-
-        //to-do: transformar o mutex externo em matriz de mutex
-        pthread_mutex_lock(&matrix_mutex[x[ID]][y[ID]]);
-        if(x[ID] >= 0 && x[ID] < N && y[ID] >= 0 && y[ID] < N && !visit[x[ID]][y[ID]]){
-            
-            visit[x[ID]][y[ID]] = true;
-            
-            if(matrix[x[ID]][y[ID]] == 0){
-                pthread_mutex_lock(&queue_mutex);
-                q.push({x[ID], y[ID]});
-                pthread_mutex_unlock(&queue_mutex);
-            }
-        }
-        pthread_mutex_unlock(&matrix_mutex[x[ID]][y[ID]]);
-    }
-
-    //return false;
-    pthread_exit(NULL);
-}
+void* isTherePath(void* threadid){ // BFS // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+    int ID = (*(int *)threadid); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+    for(int i = 0; i < 4; i++){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+        x[ID] = temp[ID].first + distX[i]; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+        y[ID] = temp[ID].second + distY[i]; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+        if((x[ID] >= 0) && (x[ID] < M) && (y[ID] >= 0) && (y[ID] < N)){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+            pthread_mutex_lock(&matrix_mutex[x[ID]][y[ID]]); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+            if(!visit[x[ID]][y[ID]]){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                visit[x[ID]][y[ID]] = true; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                if(matrix[x[ID]][y[ID]] == 0){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                    pthread_mutex_lock(&queue_mutex); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                    q.push({x[ID], y[ID]}); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                    parent[x[ID]][y[ID]] = {temp[ID].first, temp[ID].second}; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                    threadCount++; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                    pthread_mutex_unlock(&queue_mutex); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+                } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+            } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+            pthread_mutex_unlock(&matrix_mutex[x[ID]][y[ID]]); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih
+        } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+    } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+    pthread_exit(NULL); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+} // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
 
 int main(){
-    int startX, startY, i, j;
+    int startX, startY, endX, endY, i, j;
 
     // Inicializa a matriz de células visitadas e lê o labirinto
     std::cout << "Insira a matriz do labirinto:\n";
     for(i = 0; i < M; i++){
         for(j = 0; j < N; j++){
             visit[i][j] = false;
-
+ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
             int value;
             std::cin >> value;
             matrix[i][j] = value;
@@ -69,12 +68,18 @@ int main(){
     std::cout << "Insira as coordenadas x e y do ponto de saida:\n";
     std::cin >> endX >> endY;
 
-    pthread_t threads[16];
-    int threadID[16];
+    for(i = 0; i < M; i++){
+        for(j = 0; j < N; j++){
+            parent[i][j] = {-1, -1};
+        }
+    }
+    parent[startX][startY] = {startX, startY};
+
+    pthread_t threads[M*N];
+    int threadID[M*N];
     int rc;
 
     bool ans = false;
-    int threadCount = 1;
     int flag = 1;
 
     for(i = 0; i < M; i++){
@@ -83,8 +88,9 @@ int main(){
         }
     }
 
-    while(!q.empty() && flag == 1){
 
+    while(!q.empty() && flag == 1){
+        int joinValue = threadCount;
         i = threadCount;
         threadCount = 0;
         temp = (ii*) realloc(temp, i * sizeof(ii));
@@ -106,7 +112,7 @@ int main(){
                 break;
             }
 
-            printf("Criando Thread: %d\n", i-1);
+            // printf("Criando Thread: %d\n", i-1);
             rc = pthread_create(&threads[i-1], NULL, isTherePath, &threadID[i - 1]);
             if(rc){
                 printf("Fomos de Base na %da Thread\n", i-1);
@@ -116,13 +122,24 @@ int main(){
             i--;
         }
 
-        for(i = 0; i < NUM_THREADS;i++){
+        for(i = 0; i < joinValue; i++){
             pthread_join(threads[i], NULL);
         }
     }
 
+
+    i = endX;
+    j = endY;
+
     if(ans == true){
-        std::cout << "Existe caminho\n";
+        std::cout << "Existe caminho. Do ponto de saida ao de partida: \n";
+        while(parent[i][j] != std::make_pair(i, j)){
+            std::cout << "(" << i << ", " << j << ") -> ";
+            int tempi = parent[i][j].first;
+            j = parent[i][j].second;
+            i = tempi;
+        }
+        std::cout << "(" << i << ", " << j << ")\n";
     }
     else{
         std::cout << "N existe caminho\n";
