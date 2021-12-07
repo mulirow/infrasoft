@@ -4,40 +4,42 @@
 typedef std::pair<int, int> ii;
 
 // Tamanho do labirinto e n de threads
+#define M 4
 #define N 4
 #define NUM_THREADS 4
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrix_mutex[M][N];
 
 // Pilha de globais no canto do quarto
 std::queue<ii> q;
-int matrix[N][N];
-bool visit[N][N];
+int matrix[M][N];
+bool visit[M][N];
 int distX[4] = {-1, 0, 1, 0};
 int distY[4] = {0, 1, 0, -1};
 int endX, endY;
-int x, y;
+int *x = NULL, *y = NULL;
 ii* temp = NULL;
 
 void* isTherePath(void* threadid){ // BFS
     int ID = (*(int *)threadid);
     for(int i = 0; i < 4; i++){
         //to-do: x e y como array de tamanho NUM_THREAD
-        x = temp[i].first + distX[i];
-        y = temp[i].second + distY[i];
+        x[ID] = temp[i].first + distX[i];
+        y[ID] = temp[i].second + distY[i];
 
         //to-do: transformar o mutex externo em matriz de mutex
-        pthread_mutex_lock(&queue_mutex);
-        if(x >= 0 && x < N && y >= 0 && y < N && !visit[x][y]){
+        pthread_mutex_lock(&matrix_mutex[x[ID]][y[ID]]);
+        if(x[ID] >= 0 && x[ID] < N && y[ID] >= 0 && y[ID] < N && !visit[x[ID]][y[ID]]){
             
-            visit[x][y] = true;
+            visit[x[ID]][y[ID]] = true;
             
-            if(matrix[x][y] == 0){
+            if(matrix[x[ID]][y[ID]] == 0){
                 pthread_mutex_lock(&queue_mutex);
-                q.push({x, y});
+                q.push({x[ID], y[ID]});
                 pthread_mutex_unlock(&queue_mutex);
             }
         }
-        pthread_mutex_unlock(&queue_mutex);
+        pthread_mutex_unlock(&matrix_mutex[x[ID]][y[ID]]);
     }
 
     //return false;
@@ -49,7 +51,7 @@ int main(){
 
     // Inicializa a matriz de células visitadas e lê o labirinto
     std::cout << "Insira a matriz do labirinto:\n";
-    for(i = 0; i < N; i++){
+    for(i = 0; i < M; i++){
         for(j = 0; j < N; j++){
             visit[i][j] = false;
 
@@ -67,22 +69,30 @@ int main(){
     std::cout << "Insira as coordenadas x e y do ponto de saida:\n";
     std::cin >> endX >> endY;
 
-    pthread_t threads[NUM_THREADS];
-    int threadID[NUM_THREADS];
+    pthread_t threads[16];
+    int threadID[16];
     int rc;
 
     bool ans = false;
     int threadCount = 1;
     int flag = 1;
 
+    for(i = 0; i < M; i++){
+        for(j = 0; j < N; j++){
+            pthread_mutex_init(&matrix_mutex[i][j], NULL);
+        }
+    }
+
     while(!q.empty() && flag == 1){
 
         i = threadCount;
         threadCount = 0;
         temp = (ii*) realloc(temp, i * sizeof(ii));
+        x = (int *) realloc(x, i * sizeof(int));
+        y = (int *) realloc(y, i * sizeof(int));
 
         while(i > 0){
-            threadID[i] = i;
+            threadID[i-1] = i-1;
 
             pthread_mutex_lock(&queue_mutex);
             temp[i-1] = q.front();
@@ -97,7 +107,7 @@ int main(){
             }
 
             printf("Criando Thread: %d\n", i-1);
-            rc = pthread_create(&threads[i-1], NULL, isTherePath, &threadID[i]);
+            rc = pthread_create(&threads[i-1], NULL, isTherePath, &threadID[i - 1]);
             if(rc){
                 printf("Fomos de Base na %da Thread\n", i-1);
                 exit(1);
@@ -118,5 +128,13 @@ int main(){
         std::cout << "N existe caminho\n";
     }
 
+    for(i = 0; i < M; i++){
+        for(j = 0; j < N; j++){
+            pthread_mutex_destroy(&matrix_mutex[i][j]);
+        }
+    }
+
+    free(x);
+    free(y);
     pthread_exit(NULL);
 }

@@ -38,10 +38,10 @@ void unload(){
 	printf("\nAcabou a volta, desembarcando!\n");
 }
 void board(){
-	printf("%d passageiros entraram no carrinho...\n", boarded);
+	printf("Passageiro %d entrou no carrinho\n", boarded);
 }
 void unboard(){
-	printf("%d passageiros saíram do carrinho...\n", unboarded);
+	printf("Passageiro %d saiu do carrinho\n", unboarded);
 }
 
 /* Thread Functions */
@@ -51,13 +51,13 @@ void* carThread(void *threadID){
 	while(current_ride < total_rides){
 		load();
 		
-		for(i = 0; i <= capacity; i++) sem_post(&embarque); // Signal C passenger threads to board the car
+		for(i = 0; i < capacity; i++) sem_post(&embarque); // Signal C passenger threads to board the car
 		sem_wait(&embarcados); // Wait for all passengers to board
 		
 		run();
 		unload();
 		
-		for(i = 0; i <= capacity; i++) sem_post(&desembarque); // Signal the passengers in the car to unboard
+		for(i = 0; i < capacity; i++) sem_post(&desembarque); // Signal the passengers in the car to unboard
 		sem_wait(&desembarcados); // Tell the queue to start boarding again
 		printf("O carrinho está vazio!\n\n");
 		
@@ -74,31 +74,31 @@ void* passengerThread(void *threadID){
 		pthread_mutex_lock(&check_in_lock); // Lock access to shared variable before incrementing
 		boarded++;
 		board();
-		if (boarded == capacity){
-			sem_post(&embarcados); // If this is the last passenger to board, signal the car to run
-
-			if(boarded == 19)
-				boarded = 0;
-		}
+			if (boarded == capacity){
+					sem_post(&embarcados); // If this is the last passenger to unboard, signal the car to allow boarding
+					
+			}
 		pthread_mutex_unlock(&check_in_lock); // Unlock access to shared variable
 
 		sem_wait(&desembarque); // Wait for the ride to end
 	
 		pthread_mutex_lock(&riding_lock); // Lock access to shared variable before incrementing
+
 		unboarded++;
 		unboard();
-		if (unboarded == capacity){
-			sem_post(&desembarcados); // If this is the last passenger to unboard, signal the car to allow boarding
-
-			if(unboarded == 19)
+		if(unboarded == capacity){
+			sem_post(&desembarcados); // If this is the last passenger to board, signal the car to run
+			if(unboarded == 20){
 				unboarded = 0;
+				boarded   = 0;
+			}
 		}
+
 		pthread_mutex_unlock(&riding_lock); // Unlock access to shared variable
-	}
-    	return NULL;
+	}	
+	return NULL;
 }
 
-/* Main program */
 int main() {
 	// Set new instance of passenger threads, car capacity and total rides values
 	passengers = 20;
