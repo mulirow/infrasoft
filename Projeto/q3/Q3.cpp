@@ -1,114 +1,117 @@
 #include <iostream>
+#include <fstream>
 #include <bits/stdc++.h>
 #include <pthread.h>
 typedef std::pair<int, int> ii;
 
-#define M 7
-#define N 4
+// Dimensões da matriz (precisa modificar para diferentes tamanho)
+#define M 10
+#define N 20
+
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t matrix_mutex[M][N];
 
-// Pilha de globais no canto do quarto
+// Queue para controlar as próximas posições analizadas
 std::queue<ii> q;
-ii parent[M][N];
+
+// Controle do labirinto
 int matrix[M][N];
 bool visit[M][N];
-int distX[4] = {-1, 0, 1, 0};
-int distY[4] = {0, 1, 0, -1};
-int *x = NULL, *y = NULL;
-ii* temp = NULL;
+ii parent[M][N];
+ii* curr = NULL;
+
+// Quantidade de threads do nível atual da BFS
 int threadCount = 1;
 
-void* isTherePath(void* threadid){ // BFS // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-    int ID = (*(int *)threadid); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-    for(int i = 0; i < 4; i++){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-        x[ID] = temp[ID].first + distX[i]; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-        y[ID] = temp[ID].second + distY[i]; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
- // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-        if((x[ID] >= 0) && (x[ID] < M) && (y[ID] >= 0) && (y[ID] < N)){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-            pthread_mutex_lock(&matrix_mutex[x[ID]][y[ID]]); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-            if(!visit[x[ID]][y[ID]]){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                visit[x[ID]][y[ID]] = true; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
- // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                if(matrix[x[ID]][y[ID]] == 0){ // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                    pthread_mutex_lock(&queue_mutex); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                    q.push({x[ID], y[ID]}); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                    parent[x[ID]][y[ID]] = {temp[ID].first, temp[ID].second}; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                    threadCount++; // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                    pthread_mutex_unlock(&queue_mutex); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-                } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-            } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-            pthread_mutex_unlock(&matrix_mutex[x[ID]][y[ID]]); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih
-        } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-    } // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
- // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-    pthread_exit(NULL); // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-} // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
+void* isTherePath(void* threadid){ // BFS
+    int ID = (*(int *)threadid);
+
+    // Possibilidades de movimento (N, E, S, W)
+    int distX[4] = {-1, 0, 1, 0};
+    int distY[4] = {0, 1, 0, -1};
+
+    for(int i = 0; i < 4; i++){
+        int x = curr[ID].first + distX[i];
+        int y = curr[ID].second + distY[i];
+
+        if((x >= 0) && (x < M) && (y >= 0) && (y < N)){
+            // Região crítica: **visit
+            pthread_mutex_lock(&matrix_mutex[x][y]);
+            if(!visit[x][y]){
+                visit[x][y] = true;
+
+                if(matrix[x][y] == 0){
+                    // Região crítica: q
+                    pthread_mutex_lock(&queue_mutex);
+                    q.push({x, y});
+                    parent[x][y] = {curr[ID].first, curr[ID].second};
+                    threadCount++;
+                    pthread_mutex_unlock(&queue_mutex);
+                }
+            }
+            pthread_mutex_unlock(&matrix_mutex[x][y]);
+        }
+    }
+
+    pthread_exit(NULL);
+}
 
 int main(){
+    int matrixInput;
     int startX, startY, endX, endY, i, j;
+    bool ansPath = false;
+    std::ifstream fs;
+    fs.open("input.txt");
 
-    // Inicializa a matriz de células visitadas e lê o labirinto
-    std::cout << "Insira a matriz do labirinto:\n";
-    for(i = 0; i < M; i++){
-        for(j = 0; j < N; j++){
-            visit[i][j] = false;
- // fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih fvck ih 
-            int value;
-            std::cin >> value;
-            matrix[i][j] = value;
-        }
-    }
-
-    std::cout << "Insira as coordenadas x e y do ponto de partida:\n";
-    std::cin >> startX >> startY;
-    q.push({startX, startY});
-    visit[startX][startY] = true;
-
-    std::cout << "Insira as coordenadas x e y do ponto de saida:\n";
-    std::cin >> endX >> endY;
-
-    for(i = 0; i < M; i++){
-        for(j = 0; j < N; j++){
-            parent[i][j] = {-1, -1};
-        }
-    }
-    parent[startX][startY] = {startX, startY};
-
+    // Variáveis de threads
     pthread_t threads[M*N];
     int threadID[M*N];
     int rc;
 
-    bool ans = false;
-    int flag = 1;
-
+    // Inicializa as matrizes globais e lê o labirinto a partir do arquivo
     for(i = 0; i < M; i++){
         for(j = 0; j < N; j++){
+            visit[i][j] = false;
+            parent[i][j] = {-1, -1};
+
+            fs >> matrix[i][j];
+
             pthread_mutex_init(&matrix_mutex[i][j], NULL);
         }
     }
 
+    std::cout << "Insira a linha e coluna do ponto de partida (0-" << M-1 << ", 0-" << N-1 << "): ";
+    std::cin >> startX >> startY;
+    
+    // Coloca o ponto lido como origem
+    q.push({startX, startY});
+    visit[startX][startY] = true;
+    parent[startX][startY] = {startX, startY};
 
-    while(!q.empty() && flag == 1){
+    std::cout << "Insira a linha e coluna do ponto de saida(0-" << M-1 << ", 0-" << N-1 << "), diferente do ponto de partida: ";
+    std::cin >> endX >> endY;
+    
+    while(!q.empty() && !ansPath){
+        // Determina a quantidade de threads a serem usadas nessa iteração
+        // de acordo com quantos push houveram na iteração passada
         int joinValue = threadCount;
         i = threadCount;
         threadCount = 0;
-        temp = (ii*) realloc(temp, i * sizeof(ii));
-        x = (int *) realloc(x, i * sizeof(int));
-        y = (int *) realloc(y, i * sizeof(int));
+
+        curr = (ii*) realloc(curr, i * sizeof(ii));
 
         while(i > 0){
             threadID[i-1] = i-1;
 
+            // Regiões críticas: curr e q
             pthread_mutex_lock(&queue_mutex);
-            temp[i-1] = q.front();
+            curr[i-1] = q.front();
             q.pop(); 
             pthread_mutex_unlock(&queue_mutex);
 
             // Checa se chegou no destino
-            if(temp[i-1].first == endX && temp[i-1].second == endY){
-                ans = true;
-                flag = 0;
+            if(curr[i-1].first == endX && curr[i-1].second == endY){
+                ansPath = true;
                 break;
             }
 
@@ -122,16 +125,16 @@ int main(){
             i--;
         }
 
+        // Sincroniza as threads a cada nível da BFS
         for(i = 0; i < joinValue; i++){
             pthread_join(threads[i], NULL);
         }
     }
 
-
     i = endX;
     j = endY;
 
-    if(ans == true){
+    if(ansPath == true){
         std::cout << "Existe caminho. Do ponto de saida ao de partida: \n";
         while(parent[i][j] != std::make_pair(i, j)){
             std::cout << "(" << i << ", " << j << ") -> ";
@@ -142,7 +145,7 @@ int main(){
         std::cout << "(" << i << ", " << j << ")\n";
     }
     else{
-        std::cout << "N existe caminho\n";
+        std::cout << "N existe caminho. :(\n";
     }
 
     for(i = 0; i < M; i++){
@@ -151,7 +154,6 @@ int main(){
         }
     }
 
-    free(x);
-    free(y);
+    fs.close();
     pthread_exit(NULL);
 }
