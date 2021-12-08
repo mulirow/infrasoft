@@ -14,54 +14,60 @@
 pthread_mutex_t check_in_lock; 
 pthread_mutex_t riding_lock; 	
 
-sem_t board_queue; 							// Semáforo que garante o embarque da thread dos passageiros
-sem_t all_boarded; 							// Semáforo binário para bloquear o passageiro de entrar
-sem_t unboard_queue;						// Semáfoeo que garante o desembarque da thread dos passagei
-sem_t all_unboarded; 						// Semáforo binpario para permitir o passageiro de entrar
+sem_t board_queue; 					// Semáforo que garante o embarque da thread dos passageiros
+sem_t check_passenger;				// Semáforo que garante que o próximo passageiro entre após a entrada do último
+sem_t all_boarded; 					// Semáforo binário para bloquear o passageiro de entrar
+sem_t unboard_queue;				// Semáfoeo que garante o desembarque da thread dos passagei
+sem_t all_unboarded; 				// Semáforo binário para permitir o passageiro de entrar
 
-int boarded = 0; 								// Número de passageiros que entraram no carrinho
-int unboarded = 0; 							// Número de passageiros que saíram do carrinho
-int current_ride = 0; 					// Número de voltas dadas
-int total_rides; 								// Número máximo de voltas
-int passengers; 								// Numéro de threads de passageiros
-int capacity; 									// Capacidade da thread do carrinho
-int passeandoNoParque[PASSAGEIROS] = {0};
+int boarded = 0; 					// Número de passageiros que entraram no carrinho
+int unboarded = 0; 					// Número de passageiros que saíram do carrinho
+int current_ride = 0; 				// Número de voltas dadas
+int total_rides; 					// Número máximo de voltas
+int passengers; 					// Numéro de threads de passageiros
+int capacity; 						// Capacidade da thread do carrinho
+int status[PASSAGEIROS] = {0};		// Estado dos passageiros para que não entrem duas vezes seguidas
 
-// Funções para printar
-void load(){
-	printf("A volta %d irá começar, hora de embarcar!\n", current_ride+1);
-	printf("A capacidade do carrinho é de %d passageiros!\n", capacity);
-}
-void run(){
-	printf("O carrinho encheu, hora de rodar!\n");
-	printf("O carrinho está rodando!\n");
-}
-void unload(){
-	printf("Acabou a volta, hora de sair!\n");
-}
-void board(int id){
-	printf("O passageiro %d entrou do carrinho\n", id);
-}
-void unboard(int id){
-	printf("O passageiro %d saiu do carrinho\n", id);
-}
-
-/* Threads */
 void* carThread(void *threadid){
 	int i;
 	// Roda o carrinho, até dar o número máximo de voltas
 	while(current_ride < total_rides){
-		load();
+		printf("A volta %d irá começar, hora de embarcar!\n", current_ride+1);
+		printf("A capacidade do carrinho é de %d passageiros!\n", capacity);
 
-		for(i = 0; i < CAPACIDADE; i++)	sem_post(&board_queue); 																// Avisa o passageiro que pode entrar no carrinho 
-		sem_wait(&all_boarded); 																	// Aguarda todos os passageiros entrarem
+		// Atualiza o estado dos passageiros
+		// Região crítica: status[]
+		pthread_mutex_lock(&check_in_lock);
+		for(i = 0; i < PASSAGEIROS; i++){
+			if(status[i] > 0){
+				status[i]--;
+			}
+		}
+		pthread_mutex_unlock(&check_in_lock);
 
-		run();
-		unload();
+		// Um passageiro entra por vez...
+		while(boarded < CAPACIDADE){
+			sem_post(&board_queue);
+			sem_wait(&check_passenger);
+		}
+		// ...Até que a capacidade máxima seja atingida
+		sem_wait(&all_boarded);
 
-		for(i = 0; i < CAPACIDADE; i++)	sem_post(&unboard_queue);																// Avisa o passageiro que pode sair do carrinho
-					 															
-		sem_wait(&all_unboarded); 																// Avisa as pessoas da fila que podem entrar no carrinho
+		// Zera a quantidade de embarcados para a próxima iteração
+		pthread_mutex_lock(&check_in_lock);
+		boarded = 0;
+		pthread_mutex_unlock(&check_in_lock);
+
+		printf("O carrinho encheu, hora de rodar!\n");
+		printf("O carrinho está rodando!\n");
+		printf("Acabou a volta, hora de sair!\n");
+
+		// Avisa o passageiro que pode sair do carrinho
+		for(i = 0; i < CAPACIDADE; i++)	sem_post(&unboard_queue);
+
+		// Espera que todos os passageiros saiam do carrinho
+		sem_wait(&all_unboarded);
+
 		printf("Todos saíram, o carrinho está vazio!\n\n");
 
 		current_ride++;
@@ -73,27 +79,43 @@ void* passengerThread(void *threadid){
     int ID = (*(int *)threadid);
 	// Ocorre até o final do processo, quando as threads vão para o destroyer
 	while(1){
-		sem_wait(&board_queue); 										// Aguarda a sinalização
-
-		pthread_mutex_lock(&check_in_lock); 			// Bloqueia o acesso à variável compartilhada
-		boarded++;
-		board(ID);
-		if (boarded == capacity){
-			sem_post(&all_boarded); 								// Se for o último lugar no carrinho, sinaliza para ele correr
-			boarded = 0;
+		// Aguarda a sinalização para chamar o passageiro
+		sem_wait(&board_queue);
+		// Região crítica: status[] e boarded
+		pthread_mutex_lock(&check_in_lock);
+		// Se o passageiro escalonado já tentou ir na última volta, só chama o próximo
+		if(status[ID] != 0){
+			pthread_mutex_unlock(&check_in_lock);
+			sem_post(&check_passenger);
+			continue;
 		}
-		pthread_mutex_unlock(&check_in_lock); 		// Desbloqueia o acesso à variável compartilhada
-				
-		sem_wait(&unboard_queue); 									// Aguarda o fim da volta
+		// Caso o passageiro possa entrar no carrinho, ele entra
+		boarded++;
+		status[ID] = 2;
+		printf("O passageiro %d entrou do carrinho\n", ID);
 
-		pthread_mutex_lock(&riding_lock); 				// Bloqueia o acesso à variável compartilhada
+		// Se o carrinho está cheio, ele inicia a volta
+		if (boarded == capacity){
+			sem_post(&all_boarded);
+		}
+		// Lembrando de indicar que a chamada do próximo passageiro está disponível
+		sem_post(&check_passenger);
+		// Fim de uso da região crítica
+		pthread_mutex_unlock(&check_in_lock);
+
+		// Aguarda o fim da volta
+		sem_wait(&unboard_queue);
+
+		// Região crítica: unboarded
+		pthread_mutex_lock(&riding_lock);
 		unboarded++;
-		unboard(ID);
+		printf("O passageiro %d saiu do carrinho\n", ID);
+		// Se o carrinho está vazio, vamos para a próxima volta
 		if (unboarded == capacity){
-			sem_post(&all_unboarded); 							// Se for o último a sair do carrinho, sinaliza que pode embarcar os próximos
+			sem_post(&all_unboarded);
 			unboarded = 0;
 		}
-		pthread_mutex_unlock(&riding_lock); 			// Desbloqueia o acesso à variável compartilhada
+		pthread_mutex_unlock(&riding_lock);
 	}
     return NULL;
 }
@@ -115,6 +137,7 @@ int main(){
 	sem_init(&all_boarded, 0, 0);
 	sem_init(&unboard_queue, 0, 0);
 	sem_init(&all_unboarded, 0, 0);
+	sem_init(&check_passenger, 0, 0);
 
 	printf("O carrinho irá dar %d voltas!\n", total_rides);
 	printf("Tem %d pessoas na fila!\n\n", passengers);
