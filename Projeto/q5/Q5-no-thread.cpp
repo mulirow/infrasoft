@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <bits/stdc++.h>
 
 typedef std::pair<int, int> ii;
@@ -63,7 +64,7 @@ void join(ii a, ii b){
 		sz[b.first][b.second] += sz[a.first][a.second];
     }
 	else{
-		printf("Nada mudou nessa porra.");
+		printf("Nada mudou.");
 	}
 	printf("\n");
 }
@@ -167,8 +168,10 @@ void findIslands(){
 }
 
 int main(){
-    int i, j;
-    std::cin >> x >> y;
+    int i, j, trash;
+    std::ifstream fs;
+    fs.open("input.txt");
+    fs >> x >> y >> trash;
 
     root = allocMatrix<ii>(x, y);
     sz = allocMatrix<int>(x, y);
@@ -178,7 +181,7 @@ int main(){
         for (j = 0; j < y; j++){
             root[i][j] = {i, j};
             sz[i][j] = 0;
-            std::cin >> map[i][j];
+            fs >> map[i][j];
         }
     }
 
@@ -203,9 +206,10 @@ int main(){
         }
     }
 
-    printf("Number of islands nessa porra: %d\n", numIslands);
+    printf("Number of islands: %d\n", numIslands);
 
     freeMatrix<ii>(root, x);
     freeMatrix<int>(sz, x);
     freeMatrix<int>(map, x);
+    fs.close();
 }

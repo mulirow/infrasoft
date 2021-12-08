@@ -2,61 +2,66 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-int FlagID=1, *ArrayPartition, *Vetor;
+int flagID = 1;
+int *arrayPartition, *vetor;
 
 void *partCheck(void *threadid){
-    int ID = *((int *)threadid);
-    printf("Entrando na Thread %d (VALOR: %d)\n", ID, FlagID);
-    for(int i = ArrayPartition[ID]; i < ArrayPartition[ID+1]; i++){
-        if(Vetor[i+1] < Vetor[i]){
-            FlagID=0;
+    int ID = (*(int *)threadid);
+    printf("Entrando na Thread %d (VALOR: %d)\n", ID, flagID);
+
+    // Checa ordenação
+    for(int i = arrayPartition[ID]; i < arrayPartition[ID+1]; i++){
+        if(vetor[i+1] < vetor[i]){
+            flagID = 0;
         }
-    }  
-    printf("Saindo da Thread %d (VALOR: %d)\n", ID, FlagID);
+    }
+    printf("Saindo da Thread %d (VALOR: %d)\n", ID, flagID);
 }
 
 int main(){
-    int ArraySize, N;
+    int arraySize, N;
+
     printf("Digite o tamanho da array: ");
-    scanf("%d", &ArraySize);
-    Vetor = (int *) calloc(ArraySize, sizeof(int));
+    scanf("%d", &arraySize);
+    vetor = (int *) calloc(arraySize, sizeof(int));
 
     printf("Digite o Array:\n");
-    for(int i=0; i<ArraySize; i++){
-        scanf("%d", &Vetor[i]);
+    for(int i = 0; i < arraySize; i++){
+        scanf("%d", &vetor[i]);
     }
 
     printf("Digite o numero de threads: ");
     scanf("%d", &N);
 
-    if(N>ArraySize){
-        printf("Tem mais Threads que o tamanho da array.\n");
-        N=ArraySize;
+    if(N > arraySize){
+        printf("Existem mais threads que o tamanho da array.\n");
+        N = arraySize;
         printf("O número de threads foi atualizado para o tamanho do array.\n");
     }
     
-    ArrayPartition = (int *) calloc(N + 1, sizeof(int));
-    pthread_t Threads[N];
-    int ThreadsID[N], rc;
+    arrayPartition = (int *) calloc(N + 1, sizeof(int));
+    pthread_t threads[N];
+    int threadID[N], rc;
 
-    int defaultSize = ArraySize / N, extra = ArraySize % N;
+    int defaultSize = arraySize / N, extra = arraySize % N;
 
+    // Divide as posições de cada thread, dividindo o resto o mais igualmente possível
     for(int i = 1; i <= N; i++){
         if(extra > 0){
-            ArrayPartition[i] = ArrayPartition[i-1] + defaultSize + 1;
+            arrayPartition[i] = arrayPartition[i-1] + defaultSize + 1;
             extra--;
         }
         else{
-            ArrayPartition[i] = ArrayPartition[i-1] + defaultSize;
+            arrayPartition[i] = arrayPartition[i-1] + defaultSize;
         }
     }
-    // Impedir invasao de memoria na ultima particao
-    ArrayPartition[N]--;
+    // Impedir invasão de memória na última posição
+    arrayPartition[N]--;
 
-    //Criando as Threads
+    //Criando as threads
     for(int i = 0; i < N; i++){
-        ThreadsID[i] = i;
-        rc = pthread_create(&Threads[i], NULL, partCheck, &ThreadsID[i]);
+        threadID[i] = i;
+        rc = pthread_create(&threads[i], NULL, partCheck, &threadID[i]);
         printf("Criando Thread: %d\n", i);
         if(rc){ 
             printf("Fomos de Base na %d Thread\n", i);
@@ -64,17 +69,17 @@ int main(){
         }   
     }
     
-    for(int i=0; i<N;i++){
-        pthread_join(Threads[i],NULL);
+    for(int i = 0; i < N; i++){
+        pthread_join(threads[i], NULL);
     }
     
-    if(FlagID){
+    if(flagID){
         printf("O vetor esta ordenado!\n");
     }else{
         printf("O vetor nao esta ordenado!\n");
     }
 
-    free(ArrayPartition);
-    free(Vetor);
+    free(arrayPartition);
+    free(vetor);
     pthread_exit(NULL);
 }

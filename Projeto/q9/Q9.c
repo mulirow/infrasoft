@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-int *array,*guardadordeprimos, *kc;
+int *array;
 int N, T, prime = 0;
 pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -10,8 +10,10 @@ void *Eratosthenes(void *threadid){
     int ID = (*(int *)threadid);
     int i;
 
+    // Limite de procura do crivo
     while(prime * prime <= N){
-        //Escolhendo o proximo elemento
+        // Escolhendo o proximo primo
+        // Regiões críticas: prime e *array
         pthread_mutex_lock(&mymutex);
         for(i = prime + 1; i <= N; i++){
             if(array[i] == 1){
@@ -19,14 +21,12 @@ void *Eratosthenes(void *threadid){
                 break;
             }
         }
-        guardadordeprimos[ID]=prime;
+        int currPrime = prime;
         pthread_mutex_unlock(&mymutex);
 
-        printf("%d encontrado pela thread %d\n", guardadordeprimos[ID], ID);
-
         //Eliminação de não-primos
-        for(kc[ID] = guardadordeprimos[ID] + guardadordeprimos[ID]; kc[ID] < N; kc[ID] += guardadordeprimos[ID]){
-            array[kc[ID]] = 0;
+        for(int k = 2 * currPrime; k < N; k += currPrime){
+            array[k] = 0;
         }
     }
 
@@ -35,25 +35,23 @@ void *Eratosthenes(void *threadid){
 
 int main(){
     int i;
-
+    printf("Insira a quantidade de numeros do crivo (0 incluso) e a quantidade de threads: ");
     scanf("%d %d", &N, &T);
     pthread_t Threads[T];
     int ThreadsID[T], rc;
     array = (int *) malloc(N * sizeof(int));
-    guardadordeprimos = (int *) malloc(T * sizeof(int));
-    kc = (int *) malloc(T * sizeof(int));
 
+    // Inicialização
     for(i = 0; i < N; i++){
         array[i] = 1;
     }
-
     array[0] = 0;
     array[1] = 0;
 
     for(i = 0; i < T; i++){
         ThreadsID[i] = i;
         rc = pthread_create(&Threads[i], NULL, Eratosthenes, &ThreadsID[i]);
-        printf("Criando Thread: %d\n", i);
+        // printf("Criando Thread: %d\n", i);
         if(rc){
             printf("Falhou na criação da Thread %d\n", i);
             exit(1);
@@ -64,17 +62,16 @@ int main(){
         pthread_join(Threads[i], NULL);
     }
 
-    int count = 0;
+    int primeCount = 0;
     printf("Primos encontrados: ");
-    for(i = 0; i < N; i++){
+    for(i = 2; i < N; i++){
         if(array[i] == 1){
-            count++;
+            printf("%d ", i);
+            primeCount++;
         }
     }
-    printf("%d\n", count);
+    printf("\nTotal de primos: %d\n", primeCount);
 
     free(array);
-    free(guardadordeprimos);
-    free(kc);
     pthread_exit(NULL);
 }

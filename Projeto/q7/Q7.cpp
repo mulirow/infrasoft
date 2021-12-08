@@ -20,33 +20,85 @@ queue<pair<pair<int,Trapezio>,int>> filaInst; //{{Instrucao,Parâmetro},ID}
 
 pthread_mutex_t mutex_fila = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_saida = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t waitBuffer = PTHREAD_COND_INITIALIZER;
+pthread_cond_t waitAns = PTHREAD_COND_INITIALIZER;
 
 void *calculaArea(void* arg){
-    Trapezio *parametros = (Trapezio *) arg;
-    float area;
+    pair<pair<int,Trapezio>,int> *instInfo = (pair<pair<int,Trapezio>,int> *) arg;
+    int area;
+    Trapezio parametros = instInfo->first.second;
+    int id = instInfo->second;
 
-    area = (parametros->baseMaior+parametros->baseMenor)*parametros->altura;
+    area = (parametros.baseMaior+parametros.baseMenor)*parametros.altura;
     area /= 2;
-    //Região Crítica?
-    //PRECISO DO ID
+    pthread_mutex_lock(&mutex_saida);
     for(int i=0;i<bufferSaida.size();i++){
         if(id == bufferSaida[i].ID){
             bufferSaida[i].resultado = area; //(MUTEX)
+            pthread_cond_broadcast(&waitAns);
+            threadsOnline--;
         }
     }
+    pthread_mutex_unlock(&mutex_saida);
+    pthread_exit(NULL);
 }
 void *calculaPerimetroBases(void* arg){
-    Trapezio *parametros = (Trapezio *) arg;
-    float perimetro;
+    pair<pair<int,Trapezio>,int> *instInfo = (pair<pair<int,Trapezio>,int> *) arg;
+    int perimetro;
+    Trapezio parametros = instInfo->first.second;
+    int id = instInfo->second;
+    perimetro = parametros.baseMaior+parametros.baseMenor;
 
-    perimetro = parametros->baseMaior+parametros->baseMenor;
-    //Região Crítica?
-    //PRECISO DO ID
+    pthread_mutex_lock(&mutex_saida);
     for(int i=0;i<bufferSaida.size();i++){
         if(id == bufferSaida[i].ID){
             bufferSaida[i].resultado = perimetro; //(MUTEX)
+            pthread_cond_broadcast(&waitAns);
+            threadsOnline--;
         }
     }
+    pthread_mutex_unlock(&mutex_saida);
+    pthread_exit(NULL);
+}
+
+// Coloca as instruções a serem executadas no buffer
+int agendarExecucao(int instrucao, Trapezio parametros){
+    auto filaElem = make_pair(make_pair(instrucao,parametros),ID);
+    filaInst.push(filaElem);
+    if(filaInst.size()==1){
+        pthread_cond_signal(&waitBuffer);
+    }
+    printf("Instrucao #%d: Registrada\n", ID);
+    ID++;
+    return ID;
+}
+
+// Obtem resultados que estejam disponiveis, bloqueando caso contrario
+float pegarResultadoExecucao(int id){
+    float resp;
+    pthread_mutex_lock(&mutex_saida);
+    for(int i = 0;i<bufferSaida.size();i++){
+        if(id == bufferSaida[i].ID){
+            if(bufferSaida[i].resultado == -1){
+                while(bufferSaida[i].resultado == -1){
+                    //I SLIP
+                    pthread_cond_wait(&waitAns,&mutex_saida);
+                }
+                resp = bufferSaida[i].resultado;
+                bufferSaida.erase(bufferSaida.begin()+i); 
+                pthread_mutex_unlock(&mutex_saida);
+                return resp;
+            }else{
+                resp = bufferSaida[i].resultado;
+                bufferSaida.erase(bufferSaida.begin()+i); 
+                pthread_mutex_unlock(&mutex_saida);
+                return resp;
+            }
+        }
+    }
+    pthread_mutex_unlock(&mutex_saida);
+    printf("O ID nao foi encontrado.\n");
+    return -1;
 }
 
 void *acaoUsuario(void *threadid){
@@ -76,19 +128,16 @@ void *acaoUsuario(void *threadid){
         if(action == 1 && (!IDs.empty())){
             instr = IDs[rand()%(IDs.size())];
             answer = pegarResultadoExecucao(instr);
-            printf("A resposta %d",);
+            if(answer!=-1){
+                printf("A resposta da Tread de ID#%d eh: %2.f\n", instr,answer);
+            }
+            
         }
     } 
+
+    pthread_exit(NULL);
 }
 
-// Coloca as instruções a serem executadas no buffer
-int agendarExecucao(int instrucao, Trapezio parametros){
-    auto filaElem = make_pair(make_pair(instrucao,parametros),ID);
-    filaInst.push(filaElem);
-    printf("Instrucao #%d: Registrada!", ID);
-    ID++;
-    return ID;
-}
 
 // Rotina da thread de despacho
 void *DepartamentoDeDespache(void *threadid){
@@ -97,7 +146,8 @@ void *DepartamentoDeDespache(void *threadid){
     pthread_t Exec_Threads[N];
     while(1){
         while(filaInst.empty()){
-            //slip
+            //SLIP
+            pthread_cond_wait(&waitBuffer,&mutex_fila);
         }
         //real shit 
         if(threadsOnline<N){         
@@ -106,53 +156,33 @@ void *DepartamentoDeDespache(void *threadid){
             recebeFilaInst = filaInst.front();
             filaInst.pop();
             bufferSaida.push_back({-1,recebeFilaInst.second});
-            pthread_mutex_unlock(&mutex_fila);
             //Criando threads executoras (REGIÃO CRÍTICA?)
             if(recebeFilaInst.first.first==1){
                 threadsOnline++;
-                if(pthread_create(&Exec_Threads[threadsOnline],NULL,calculaArea, &recebeFilaInst.first.second)){
+                if(pthread_create(&Exec_Threads[threadsOnline],NULL,calculaArea, &recebeFilaInst)){
                     printf("Erro na criacao da Thread executora #%d (INST#1)\n", threadsOnline);
                     exit(1);
                 }
             }else if(recebeFilaInst.first.first==2){
                 threadsOnline++;
-                if(pthread_create(&Exec_Threads[threadsOnline],NULL,calculaPerimetroBases, &recebeFilaInst.first.second)){
+                if(pthread_create(&Exec_Threads[threadsOnline],NULL,calculaPerimetroBases, &recebeFilaInst)){
                     printf("Erro na criacao da Thread executora #%d (ISNT#2)\n", threadsOnline);
                     exit(1);
                 }
             }else{
                 printf("Essa instrucao nao esta disponivel.\n");
             }
+            pthread_mutex_unlock(&mutex_fila);
             //UNLOCK
         }else{
             //slip
+            pthread_cond_wait(&waitBuffer,&mutex_fila);
         }
         
     }
+    pthread_exit(NULL);
 }
  
-// Obtem resultados que estejam disponiveis, bloqueando caso contrario
-float pegarResultadoExecucao(int id){
-    float resp;
-    for(auto i = 0;i<bufferSaida.size();i++){
-        if(id==bufferSaida[i].ID){
-            if(bufferSaida[i].resultado==-1){
-                //espera
-                resp = bufferSaida[i].resultado;
-                pthread_mutex_lock(&mutex_saida);
-                bufferSaida.erase(bufferSaida.begin()+i); 
-                pthread_mutex_unlock(&mutex_saida);
-                return resp;
-            }else{
-                resp = bufferSaida[i].resultado;
-                pthread_mutex_lock(&mutex_saida);
-                bufferSaida.erase(bufferSaida.begin()+i); 
-                pthread_mutex_unlock(&mutex_saida);
-                return resp;
-            }
-        }
-    }
-}
 
 
 int main(){
@@ -167,9 +197,9 @@ int main(){
 
     //Criando threads de usuarios
     for(int i=0; i<NUM_USERS; i++){
-        printf("Criando Thread de usuario #d\n", i);
+        printf("Criando Thread de usuario #%d\n", i);
         if(pthread_create(&threadUsuarios[i], NULL, acaoUsuario, NULL)){
-            printf("Erro na criacao da Thread de usuario #d", i);
+            printf("Erro na criacao da Thread de usuario #%d", i);
             exit(1);
         }
     }

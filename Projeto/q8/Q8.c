@@ -6,135 +6,138 @@
 #include <time.h>
 
 // Maximum number of passenger threads available
-#define PASSAGEIROS 20
+#define PASSAGEIROS 21
 #define VOLTAS 10
+#define CAPACIDADE 10
 
-/* Variables */
-pthread_mutex_t check_in_lock; 	// mutex to control access of the 'boarded' variable
-pthread_mutex_t riding_lock; 		// mutex to control access of the 'unboarded' variable
+// Mutexes para controlar o processo de embarque e desembarque
+pthread_mutex_t check_in_lock; 
+pthread_mutex_t riding_lock; 	
 
-sem_t embarque; 							// semaphore to ensure boarding of C passenger threads
-sem_t embarcados; 							// binary semaphore to tell passenger threads to wait for the next ride
-sem_t desembarque;						// semaphore to ensure unboarding of C passenger threads
-sem_t desembarcados; 						// binary semaphore to signal passenger threads for boarding
+sem_t board_queue; 							// Semáforo que garante o embarque da thread dos passageiros
+sem_t all_boarded; 							// Semáforo binário para bloquear o passageiro de entrar
+sem_t unboard_queue;						// Semáfoeo que garante o desembarque da thread dos passagei
+sem_t all_unboarded; 						// Semáforo binpario para permitir o passageiro de entrar
 
-volatile int boarded = 0; 			// current number of passenger threads that have boarded
-volatile int unboarded = 0; 		// current number of passenger threads that have unboarded
-volatile int current_ride = 0; 	// current number of rides
-volatile int total_rides; 			// total number of coaster rides for the instance
-volatile int passengers; 				// current number of passenger threads
-volatile int capacity; 					// current capacity of the car thread
+int boarded = 0; 								// Número de passageiros que entraram no carrinho
+int unboarded = 0; 							// Número de passageiros que saíram do carrinho
+int current_ride = 0; 					// Número de voltas dadas
+int total_rides; 								// Número máximo de voltas
+int passengers; 								// Numéro de threads de passageiros
+int capacity; 									// Capacidade da thread do carrinho
+int passeandoNoParque[PASSAGEIROS] = {0};
 
-/* Helper functions */
+// Funções para printar
 void load(){
-	printf("Volta #%d irá começar, embarcando!\n", current_ride+1);
-	printf("A capacidade do carrinho é de %d pessoas\n", capacity);
+	printf("A volta %d irá começar, hora de embarcar!\n", current_ride+1);
+	printf("A capacidade do carrinho é de %d passageiros!\n", capacity);
 }
 void run(){
-	printf("\nO carrinho está cheio, começando a volta!\n");
-	printf("O carrinho está dando a volta!\n");
+	printf("O carrinho encheu, hora de rodar!\n");
+	printf("O carrinho está rodando!\n");
 }
 void unload(){
-	printf("\nAcabou a volta, desembarcando!\n");
+	printf("Acabou a volta, hora de sair!\n");
 }
-void board(){
-	printf("Passageiro %d entrou no carrinho\n", boarded);
+void board(int id){
+	printf("O passageiro %d entrou do carrinho\n", id);
 }
-void unboard(){
-	printf("Passageiro %d saiu do carrinho\n", unboarded);
+void unboard(int id){
+	printf("O passageiro %d saiu do carrinho\n", id);
 }
 
-/* Thread Functions */
-void* carThread(void *threadID){
+/* Threads */
+void* carThread(void *threadid){
 	int i;
-	// Run the roller coaster for <total_rides> times
+	// Roda o carrinho, até dar o número máximo de voltas
 	while(current_ride < total_rides){
 		load();
-		
-		for(i = 0; i < capacity; i++) sem_post(&embarque); // Signal C passenger threads to board the car
-		sem_wait(&embarcados); // Wait for all passengers to board
-		
+
+		for(i = 0; i < CAPACIDADE; i++)	sem_post(&board_queue); 																// Avisa o passageiro que pode entrar no carrinho 
+		sem_wait(&all_boarded); 																	// Aguarda todos os passageiros entrarem
+
 		run();
 		unload();
-		
-		for(i = 0; i < capacity; i++) sem_post(&desembarque); // Signal the passengers in the car to unboard
-		sem_wait(&desembarcados); // Tell the queue to start boarding again
-		printf("O carrinho está vazio!\n\n");
-		
+
+		for(i = 0; i < CAPACIDADE; i++)	sem_post(&unboard_queue);																// Avisa o passageiro que pode sair do carrinho
+					 															
+		sem_wait(&all_unboarded); 																// Avisa as pessoas da fila que podem entrar no carrinho
+		printf("Todos saíram, o carrinho está vazio!\n\n");
+
 		current_ride++;
 	}
 	return NULL;
 }
 
-void* passengerThread(void *threadID){
-	// Run indefinitely, threads will be destroyed when the main process exits
+void* passengerThread(void *threadid){
+    int ID = (*(int *)threadid);
+	// Ocorre até o final do processo, quando as threads vão para o destroyer
 	while(1){
-		sem_wait(&embarque); // Wait for the car thread signal to board
-		
-		pthread_mutex_lock(&check_in_lock); // Lock access to shared variable before incrementing
+		sem_wait(&board_queue); 										// Aguarda a sinalização
+
+		pthread_mutex_lock(&check_in_lock); 			// Bloqueia o acesso à variável compartilhada
 		boarded++;
-		board();
-			if (boarded == capacity){
-					sem_post(&embarcados); // If this is the last passenger to unboard, signal the car to allow boarding
-					
-			}
-		pthread_mutex_unlock(&check_in_lock); // Unlock access to shared variable
-
-		sem_wait(&desembarque); // Wait for the ride to end
-	
-		pthread_mutex_lock(&riding_lock); // Lock access to shared variable before incrementing
-
-		unboarded++;
-		unboard();
-		if(unboarded == capacity){
-			sem_post(&desembarcados); // If this is the last passenger to board, signal the car to run
-			if(unboarded == 20){
-				unboarded = 0;
-				boarded   = 0;
-			}
+		board(ID);
+		if (boarded == capacity){
+			sem_post(&all_boarded); 								// Se for o último lugar no carrinho, sinaliza para ele correr
+			boarded = 0;
 		}
+		pthread_mutex_unlock(&check_in_lock); 		// Desbloqueia o acesso à variável compartilhada
+				
+		sem_wait(&unboard_queue); 									// Aguarda o fim da volta
 
-		pthread_mutex_unlock(&riding_lock); // Unlock access to shared variable
-	}	
-	return NULL;
+		pthread_mutex_lock(&riding_lock); 				// Bloqueia o acesso à variável compartilhada
+		unboarded++;
+		unboard(ID);
+		if (unboarded == capacity){
+			sem_post(&all_unboarded); 							// Se for o último a sair do carrinho, sinaliza que pode embarcar os próximos
+			unboarded = 0;
+		}
+		pthread_mutex_unlock(&riding_lock); 			// Desbloqueia o acesso à variável compartilhada
+	}
+    return NULL;
 }
 
-int main() {
-	// Set new instance of passenger threads, car capacity and total rides values
-	passengers = 20;
+int main(){
+
+	passengers = 21;
 	capacity = 10;
 	total_rides = 10;
 
 	pthread_t passenger[passengers];
 	pthread_t car;
-	int i;
-	
-	// Create new mutexes and semaphores
+	int i, passengers_ID[passengers];
+
+	// Novos Mutexes e Semáforos
 	pthread_mutex_init(&check_in_lock, NULL);
 	pthread_mutex_init(&riding_lock, NULL);
-	sem_init(&embarque, 0, 0);
-	sem_init(&embarcados, 0, 0);
-	sem_init(&desembarque, 0, 0);
-	sem_init(&desembarcados, 0, 0);
+	sem_init(&board_queue, 0, 0);
+	sem_init(&all_boarded, 0, 0);
+	sem_init(&unboard_queue, 0, 0);
+	sem_init(&all_unboarded, 0, 0);
 
-	printf("A montanha-russa da %d voltas por dia!\n", total_rides);
-	printf("Têm %d passageiros na fila!\n\n", passengers);
-	
-	// Cria threads e inicia a montanha-russa
+	printf("O carrinho irá dar %d voltas!\n", total_rides);
+	printf("Tem %d pessoas na fila!\n\n", passengers);
+
+	// Criando as threads e iniciando o processo da montanha-russa
 	pthread_create(&car, NULL, carThread, NULL);
-	for(i = 0; i < passengers; i++) pthread_create(&passenger[i], NULL, passengerThread, NULL);
-	// Entra na thread do carro quando todas as 10 voltas foram dadas
-	pthread_join(car, NULL); 		
-	
-	printf("Todas as voltas diárias foram dadas, por hoje é só!!.\n");
+	for(i = 0; i < passengers; i++){
+        passengers_ID[i] = i;
+        pthread_create(&passenger[i], NULL, passengerThread, &passengers_ID[i]);
+
+    } 
+	// Entra na thread do carrinho, após as 10 voltas forem completas
+	pthread_join(car, NULL);
+
+	printf("Todas as voltas foram dadas, até a próxima!\n");
 
 	// Destroyers
 	pthread_mutex_destroy(&check_in_lock);
 	pthread_mutex_destroy(&riding_lock);
-	sem_destroy(&embarque);
-	sem_destroy(&embarcados);
-	sem_destroy(&desembarque);
-	sem_destroy(&desembarcados);
+	sem_destroy(&board_queue);
+	sem_destroy(&all_boarded);
+	sem_destroy(&unboard_queue);
+	sem_destroy(&all_unboarded);
 
 	return 0;
-}
+} 
